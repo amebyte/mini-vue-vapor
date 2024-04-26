@@ -1,0 +1,24 @@
+{
+  "name": "mini-vue-vapor",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/amebyte/mini-vue-vapor.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/amebyte/mini-vue-vapor/issues"
+  },
+  "homepage": "https://github.com/amebyte/mini-vue-vapor#readme",
+  "dependencies": {
+    "@vue/reactivity": "^3.4.25",
+    "vite": "^5.2.10"
+  }
+}
