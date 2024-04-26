@@ -10,27 +10,28 @@ function template(html) {
     return fn 
 }
 
-function render(component, parent) {
-    parent.appendChild(component)
+function render(comp, container) {
+    const block = comp()
+    insert(block, container)
 }
 
-function insert(parent, accessor) {
-    effect(() => {
-        parent.textContent = accessor.value
-    })
+function insert(block, parent, anchor) {
+    parent.insertBefore(block, anchor)
 }
 
-// 生成创建 button 标签的函数
-const _tmpl$ = template('<button></button>')
 const App = () => {
+    // 生成创建 button 标签的函数
+    const _tmpl$ = template('<button></button>')
     const count = ref(0)
     // 真正进行创建模板内容的地方
     const el = _tmpl$()
     el.addEventListener('click', () => {
         count.value++
     })
-    insert(el, count)
+    effect(() => {
+        el.textContent = count.value
+    })
     return el
 }
 const root = document.getElementById('app')
-render(App(), root)
+render(App, root)
