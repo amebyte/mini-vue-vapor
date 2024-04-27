@@ -9,7 +9,13 @@ function mountComponent(
   container
 ) {
   instance.container = container
-  const block = instance.block = instance.component()
+
+  const { component } = instance
+  const setupFn =
+      typeof component === 'function' ? component : component.setup
+  const state = setupFn && setupFn()
+ 
+  const block = instance.block = component.setup ? component.render(state) : state
   insert(block, instance.container)
   instance.isMounted = true
   // TODO: lifecycle hooks (mounted, ...)
