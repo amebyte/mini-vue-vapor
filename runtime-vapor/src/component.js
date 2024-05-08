@@ -12,3 +12,15 @@ export const createComponentInstance = (
   }
   return instance
 }
+
+export let currentInstance = null
+
+export const getCurrentInstance = () => currentInstance
+
+export const setCurrentInstance = instance => {
+  currentInstance = instance
+}
+
+export const unsetCurrentInstance = () => {
+  currentInstance = null
+}
