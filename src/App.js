@@ -1,6 +1,16 @@
-import { ref, template, effect } from "../runtime-vapor/src"
+import { ref, template, effect, getCurrentInstance, insert } from "../runtime-vapor/src"
+import { createComponent } from "../runtime-vapor/src/apiCreateComponent"
+import ChildComponent from "./childComponent"
 const App = {
     setup() {
+        const instance = getCurrentInstance()
+        instance.m = []
+        instance.add = (fn) => {
+            instance.m.push(fn)
+        }
+        instance.add(() => {
+            console.log('mounted')
+        })
         const count = ref(0)
         return { count } 
     },
@@ -12,9 +22,11 @@ const App = {
         el.addEventListener('click', () => {
             _ctx.count.value++
         })
-        effect(() => {
-            el.textContent = _ctx.count.value
-        })
+        const n1 = createComponent(ChildComponent)
+        insert(n1, el)
+        // effect(() => {
+        //     el.textContent = _ctx.count.value
+        // })
         return el
     }
 }
