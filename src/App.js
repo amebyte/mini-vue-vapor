@@ -20,7 +20,7 @@ const App = {
         // 真正进行创建模板内容的地方
         const el = _tmpl$()
         el.addEventListener('click', () => {
-            _ctx.count.value++
+            _ctx.count++
         })
         const n1 = createComponent(ChildComponent)
         insert(n1, el)

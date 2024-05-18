@@ -1,3 +1,4 @@
+import { proxyRefs } from '@vue/reactivity'
 import { createComponentInstance, setCurrentInstance, unsetCurrentInstance } from './component'
 export function render(comp, container) {
     const instance = createComponentInstance(comp)
@@ -42,7 +43,7 @@ export function setupComponent(instance) {
   // 获取 setup 方法的执行结果
   const state = setupFn && setupFn()
   // 执行 render 函数获取 DOM 结果
-  instance.block = component.setup ? component.render(state) : state 
+  instance.block = component.setup ? component.render(proxyRefs(state)) : state 
 }
 
 export function insert(block, parent, anchor = null) {

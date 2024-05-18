@@ -10,7 +10,7 @@ const ChildComponent = {
         // 真正进行创建模板内容的地方
         const el = _tmpl$()
         effect(() => {
-            el.textContent = _ctx.name.value
+            el.textContent = _ctx.name
         }) 
         return el
     }
