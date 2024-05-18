@@ -1,15 +1,18 @@
-let uid = 0
+import { initProps } from "./componentProps"
 export const createComponentInstance = (
-  component
+  component,
+  rawProps
 ) => {
   const instance = {
-    uid: uid++,
     block: null,
     container: null, // set on mount
     component,
+    props: {}, // 父组件传递进来的 props 数据最终存储的地方
     isMounted: false
     // TODO: registory of provides, appContext, lifecycles, ...
   }
+  // 初始化 props
+  initProps(instance, rawProps)
   return instance
 }
 

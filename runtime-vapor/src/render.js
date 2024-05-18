@@ -40,10 +40,17 @@ export function setupComponent(instance) {
   // 判断是状态组件还是函数组件
   const setupFn =
       typeof component === 'function' ? component : component.setup
-  // 获取 setup 方法的执行结果
-  const state = setupFn && setupFn()
-  // 执行 render 函数获取 DOM 结果
-  instance.block = component.setup ? component.render(proxyRefs(state)) : state 
+  // 获取 setup 方法的执行结果，并且把 props 作为 setup 方法的第一个参数传递进去
+  const stateOrNode = setupFn && setupFn(instance.props)
+  let block
+  if (stateOrNode && stateOrNode instanceof Node) {
+    // setup 方法返回的也可能是 DOM 节点，所以如果是 DOM 节点则直接把 DOM 节点赋值给组件实例对象上的 block 属性
+    block = stateOrNode
+  } else {
+    // 执行 render 函数获取 DOM 结果
+    block = component.render(proxyRefs(stateOrNode))
+  }
+  instance.block = block
 }
 
 export function insert(block, parent, anchor = null) {
