@@ -1,4 +1,4 @@
-import { initProps } from "./componentProps"
+import { initProps, normalizePropsOptions } from "./componentProps"
 export const createComponentInstance = (
   component,
   rawProps
@@ -8,6 +8,7 @@ export const createComponentInstance = (
     container: null, // set on mount
     component,
     props: {}, // 父组件传递进来的 props 数据最终存储的地方
+    propsOptions: normalizePropsOptions(component),
     isMounted: false
     // TODO: registory of provides, appContext, lifecycles, ...
   }
