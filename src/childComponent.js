@@ -1,5 +1,11 @@
 import { ref, template, effect } from '../runtime-vapor/src'
 const ChildComponent = {
+    props: {
+        count: {
+            type: Number,
+            required: true
+        }
+    },
     setup(props) {
         return (() => {
             const _tmpl$ = template('<div id="child"></div>')

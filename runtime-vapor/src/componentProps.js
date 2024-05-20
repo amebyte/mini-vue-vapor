@@ -1,5 +1,9 @@
+// 模拟开发环境变量
+const __DEV__ = true
+
 export function initProps(instance, rawProps) {
     const props = {}
+    const [options] = instance.propsOptions
     if (rawProps) {
       for(const key in rawProps) {
         const valueGetter = rawProps[key]
@@ -10,6 +14,12 @@ export function initProps(instance, rawProps) {
         })
       }
     }
+
+    // 开发环境进行检查 props 的数据是否合规
+    if (__DEV__) {
+        validateProps(rawProps, props, options || {})
+    }
+
     instance.props = props
 }
 
@@ -31,3 +41,56 @@ export function normalizePropsOptions(comp) {
   
     return [normalized, needCastKeys]
   }
+
+// 因为在 Vue 内部也使用 $ 开头作为方法和属性，所以为了防止冲突，也禁止使用 $ 开头的 prop
+function validatePropName(key) {
+    if (key[0] !== '$') {
+      return true
+    } else if (__DEV__) {
+      // 开发环境会进行警告
+      console.warn(`Invalid prop name: "${key}" is a reserved property.`)
+    }
+    return false
+}
+
+function validateProps(
+    rawProps,
+    props,
+    options,
+) {
+    const presentKeys = []
+    // 收集传递过来的 props 属性然后在后面判断是否存在 props 配置中
+    rawProps && presentKeys.push(...Object.keys(rawProps))
+  
+    for (const key in options) {
+      const opt = options[key]
+      if (opt != null)
+        validateProp(
+          key,
+          props[key],
+          opt,
+          props,
+          !presentKeys.some(k => k === key), // 判断传过来的 prop 是否存在配置中
+        )
+    }  
+}
+
+function validateProp(
+    name,
+    value,
+    option,
+    props,
+    isAbsent
+  ) {
+    const { required, validator } = option
+    // 必填项校验
+    if (required && isAbsent) {
+      console.warn('Missing required prop: "' + name + '"')
+      return
+    }
+  
+    // 自定义校验器校验
+    if (validator && !validator(value, props)) {
+      console.warn('Invalid prop: custom validator check failed for prop "' + name + '".')
+    }
+}
