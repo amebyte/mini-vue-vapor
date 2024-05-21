@@ -3,7 +3,7 @@ const ChildComponent = {
     props: {
         count: {
             type: Number,
-            required: true
+            default: 520
         }
     },
     setup(props) {
