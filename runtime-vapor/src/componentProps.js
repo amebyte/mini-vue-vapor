@@ -15,8 +15,6 @@ export function initProps(instance, rawProps) {
     validateProps(rawProps, props, options || {})
   }
 
-  patchAttrs(instance)
-
   instance.props = props
 }
 
@@ -29,20 +27,11 @@ function registerProp(
   // 如果已经存在的就不再处理
   if (key in props) return
   const [options, needCastKeys] = instance.propsOptions
-  let value
-  // 如果父组件没传相关 prop 
-  if (getter === undefined) {
-    // 检查是否存在默认值需要转换
-    const needCast = needCastKeys && needCastKeys.includes(key)
-    // 需要转换
-    if (needCast) {
-      value = resolvePropValue(options, props, key, getter ? getter() : undefined)
-    }
-  }
+  // 检查是否存在默认值需要转换
+  const needCast = needCastKeys && needCastKeys.includes(key) 
+  const get = needCast ? () => resolvePropValue(options, props, key, getter ? getter() : undefined) : getter 
   Object.defineProperty(props, key, {
-    get() {
-      return getter === undefined ? value : getter()
-    }
+    get
   })
 }
 
@@ -52,8 +41,8 @@ function resolvePropValue(options, props, key, value) {
   if (opt != null) {
     // 默认值必须是自身的属性
     const hasDefault = Object.prototype.hasOwnProperty.call(opt, 'default')
-    // 如果存在默认值
-    if (hasDefault) {
+    // 如果存在默认值并且 value 是 undefined 才能读取默认值
+    if (hasDefault && value === undefined) {
       const defaultValue = opt.default
       // 如果默认值是函数，且类型不是函数
       if (opt.type !== Function && typeof defaultValue === 'function') {

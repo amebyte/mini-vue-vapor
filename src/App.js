@@ -15,7 +15,7 @@ const App = {
             _ctx.count++
         })
         const n1 = createComponent(ChildComponent, { 
-            // count: () => _ctx.count
+            count: () => _ctx.count
         })
         insert(n1, el)
         return el
