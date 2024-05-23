@@ -36,24 +36,7 @@ function registerProp(
     const needCast = needCastKeys && needCastKeys.includes(key)
     // 需要转换
     if (needCast) {
-      const opt = options[key]
-      // 存在配置项
-      if (opt != null) {
-        // 默认值必须是自身的属性
-        const hasDefault = Object.prototype.hasOwnProperty.call(opt, 'default')
-        // 如果存在默认值
-        if (hasDefault) {
-          const defaultValue = opt.default
-          // 如果默认值是函数，且类型不是函数
-          if (opt.type !== Function && typeof defaultValue === 'function') {
-            // 默认值时函数需要把执行的结果返回再进行赋值，并且默认值中的函数不能访问组件实例 this 的，所以在执行的时候需要把里面的 this 通过 call 方法指向 null
-            value = defaultValue.call(null, props)
-          } else {
-            // 默认值不是函数，直接赋值
-            value = defaultValue
-          }
-        }
-      }
+      value = resolvePropValue(options, props, key, getter ? getter() : undefined)
     }
   }
   Object.defineProperty(props, key, {
@@ -61,6 +44,28 @@ function registerProp(
       return getter === undefined ? value : getter()
     }
   })
+}
+
+function resolvePropValue(options, props, key, value) {
+  const opt = options[key]
+  // 存在配置项
+  if (opt != null) {
+    // 默认值必须是自身的属性
+    const hasDefault = Object.prototype.hasOwnProperty.call(opt, 'default')
+    // 如果存在默认值
+    if (hasDefault) {
+      const defaultValue = opt.default
+      // 如果默认值是函数，且类型不是函数
+      if (opt.type !== Function && typeof defaultValue === 'function') {
+        // 默认值时函数需要把执行的结果返回再进行赋值，并且默认值中的函数不能访问组件实例 this 的，所以在执行的时候需要把里面的 this 通过 call 方法指向 null
+        value = defaultValue.call(null, props)
+      } else {
+        // 默认值不是函数，直接赋值
+        value = defaultValue
+      }
+    }
+  }
+  return value
 }
 
 export function normalizePropsOptions(comp) {
