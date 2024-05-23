@@ -2,43 +2,12 @@
 const __DEV__ = true
 
 export function initProps(instance, rawProps) {
+  instance.rawProps = rawProps
   const props = {}
-  const [options, needCastKeys] = instance.propsOptions
+  const [options] = instance.propsOptions
   if (options) {
     for(const key in options) {
-      const valueGetter = rawProps[key]
-      let value
-      // 如果父组件没传相关 prop 
-      if (valueGetter === undefined) {
-        // 检查是否存在默认值需要转换
-        const needCast = needCastKeys && needCastKeys.includes(key)
-        // 需要转换
-        if (needCast) {
-          const opt = options[key]
-          // 存在配置项
-          if (opt != null) {
-            // 默认值必须是自身的属性
-            const hasDefault = Object.prototype.hasOwnProperty.call(opt, 'default')
-            // 如果存在默认值
-            if (hasDefault) {
-              const defaultValue = opt.default
-              // 如果默认值是函数，且类型不是函数
-              if (opt.type !== Function && typeof defaultValue === 'function') {
-                // 默认值时函数需要把执行的结果返回再进行赋值，并且默认值中的函数不能访问组件实例 this 的，所以在执行的时候需要把里面的 this 通过 call 方法指向 null
-                value = defaultValue.call(null, props)
-              } else {
-                // 默认值不是函数，直接赋值
-                value = defaultValue
-              }
-            }
-          }
-        }
-      }
-      Object.defineProperty(props, key, {
-        get() {
-          return valueGetter === undefined ? value : valueGetter()
-        }
-      })
+      registerProp(instance, props, key, rawProps[key])
     }
   }
   // 开发环境进行检查 props 的数据是否合规
@@ -46,7 +15,52 @@ export function initProps(instance, rawProps) {
     validateProps(rawProps, props, options || {})
   }
 
+  patchAttrs(instance)
+
   instance.props = props
+}
+
+function registerProp(
+  instance,
+  props,
+  key,
+  getter
+) {
+  // 如果已经存在的就不再处理
+  if (key in props) return
+  const [options, needCastKeys] = instance.propsOptions
+  let value
+  // 如果父组件没传相关 prop 
+  if (getter === undefined) {
+    // 检查是否存在默认值需要转换
+    const needCast = needCastKeys && needCastKeys.includes(key)
+    // 需要转换
+    if (needCast) {
+      const opt = options[key]
+      // 存在配置项
+      if (opt != null) {
+        // 默认值必须是自身的属性
+        const hasDefault = Object.prototype.hasOwnProperty.call(opt, 'default')
+        // 如果存在默认值
+        if (hasDefault) {
+          const defaultValue = opt.default
+          // 如果默认值是函数，且类型不是函数
+          if (opt.type !== Function && typeof defaultValue === 'function') {
+            // 默认值时函数需要把执行的结果返回再进行赋值，并且默认值中的函数不能访问组件实例 this 的，所以在执行的时候需要把里面的 this 通过 call 方法指向 null
+            value = defaultValue.call(null, props)
+          } else {
+            // 默认值不是函数，直接赋值
+            value = defaultValue
+          }
+        }
+      }
+    }
+  }
+  Object.defineProperty(props, key, {
+    get() {
+      return getter === undefined ? value : getter()
+    }
+  })
 }
 
 export function normalizePropsOptions(comp) {
