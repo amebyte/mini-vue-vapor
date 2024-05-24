@@ -1,3 +1,4 @@
+import { patchAttrs } from './componentAttrs'
 // 模拟开发环境变量
 const __DEV__ = true
 
@@ -14,6 +15,9 @@ export function initProps(instance, rawProps) {
   if (__DEV__) {
     validateProps(rawProps, props, options || {})
   }
+
+  // 设置 attrs
+  patchAttrs(instance)
 
   instance.props = props
 }

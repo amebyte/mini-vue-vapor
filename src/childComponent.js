@@ -6,7 +6,9 @@ const ChildComponent = {
             default: 520
         }
     },
-    setup(props) {
+    setup(props, { attrs }) {
+        console.log('props', props)
+        console.log('attrs', attrs)
         return (() => {
             const _tmpl$ = template('<div id="child"></div>')
             // 真正进行创建模板内容的地方
