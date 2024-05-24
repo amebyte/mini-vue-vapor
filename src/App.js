@@ -14,7 +14,8 @@ const App = {
         el.addEventListener('click', () => {
             _ctx.count++
         })
-        const n1 = createComponent(ChildComponent, { 
+        const n1 = createComponent(ChildComponent, {
+            name: () => '掘金签约作者：Cobyte',
             count: () => _ctx.count
         })
         insert(n1, el)

@@ -41,7 +41,7 @@ export function setupComponent(instance) {
   const setupFn =
       typeof component === 'function' ? component : component.setup
   // 获取 setup 方法的执行结果，并且把 props 作为 setup 方法的第一个参数传递进去
-  const stateOrNode = setupFn && setupFn(instance.props)
+  const stateOrNode = setupFn && setupFn(instance.props, { attrs: instance.attrs })
   let block
   if (stateOrNode && stateOrNode instanceof Node) {
     // setup 方法返回的也可能是 DOM 节点，所以如果是 DOM 节点则直接把 DOM 节点赋值给组件实例对象上的 block 属性
