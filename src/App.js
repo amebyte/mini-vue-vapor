@@ -15,7 +15,7 @@ const App = {
             _ctx.count++
         })
         const n1 = createComponent(ChildComponent, {
-            name: () => '掘金签约作者：Cobyte',
+            name: () => { return { info: '掘金签约作者' } },
             count: () => _ctx.count
         })
         insert(n1, el)

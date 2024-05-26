@@ -34,13 +34,11 @@ export const unsetCurrentInstance = () => {
 }
 
 export function createSetupContext(instance) {
-  const setupContext = {}
-  Object.defineProperty(setupContext, 'attrs', {
-    get() {
+  return Object.freeze({
+    get attrs() {
       return instance.attrs
     }
   })
-  return Object.freeze(setupContext)
 }
 
 function getAttrsProxy(instance) {
