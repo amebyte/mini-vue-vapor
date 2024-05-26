@@ -36,7 +36,7 @@ export const unsetCurrentInstance = () => {
 export function createSetupContext(instance) {
   return Object.freeze({
     get attrs() {
-      return instance.attrs
+      return getAttrsProxy(instance)
     }
   })
 }
@@ -47,7 +47,7 @@ function getAttrsProxy(instance) {
     instance.attrsProxy ||
     (instance.attrsProxy = new Proxy(
       instance.attrs,
-      __DEV__
+      __DEV__ // 只在开发环境才进行提醒
         ? {
             get(target, key) {
               return target[key]

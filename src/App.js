@@ -4,7 +4,8 @@ import ChildComponent from "./childComponent"
 const App = {
     setup() {
         const count = ref(0)
-        return { count } 
+        const info = { info: '掘金签约作者' }
+        return { count, info } 
     },
     render(_ctx) {
         // 生成创建 button 标签的函数
@@ -15,7 +16,7 @@ const App = {
             _ctx.count++
         })
         const n1 = createComponent(ChildComponent, {
-            name: () => { return { info: '掘金签约作者' } },
+            name: () => _ctx.info,
             count: () => _ctx.count
         })
         insert(n1, el)
