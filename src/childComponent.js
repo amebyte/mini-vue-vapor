@@ -6,9 +6,9 @@ const ChildComponent = {
             default: 520
         }
     },
-    setup(props, context) {
-        context.attrs = '掘金签约作者：Cobyte'
-        console.log('attrs', context.attrs)
+    setup(props, { attrs }) {
+        // attrs.name = '掘金签约作者：Cobyte'
+        console.log('attrs', attrs)
         return (() => {
             const _tmpl$ = template('<div id="child"></div>')
             // 真正进行创建模板内容的地方

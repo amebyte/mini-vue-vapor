@@ -1,5 +1,5 @@
-import { proxyRefs } from '@vue/reactivity'
-import { createComponentInstance, setCurrentInstance, unsetCurrentInstance } from './component'
+import { proxyRefs, shallowReadonly } from '@vue/reactivity'
+import { createComponentInstance, setCurrentInstance, unsetCurrentInstance, createSetupContext } from './component'
 export function render(comp, container) {
     const instance = createComponentInstance(comp)
     mountComponent(instance, (container = normalizeContainer(container)))
@@ -40,7 +40,7 @@ export function setupComponent(instance) {
   // 判断是状态组件还是函数组件
   const setupFn =
       typeof component === 'function' ? component : component.setup
-  instance.setupContext = { attrs: instance.attrs }
+  instance.setupContext = createSetupContext(instance)
   // 获取 setup 方法的执行结果，并且把 props 作为 setup 方法的第一个参数传递进去
   const stateOrNode = setupFn && setupFn(shallowReadonly(instance.props), instance.setupContext)
   let block
