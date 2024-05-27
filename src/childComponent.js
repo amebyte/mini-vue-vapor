@@ -1,4 +1,4 @@
-import { ref, template, effect } from '../runtime-vapor/src'
+import { ref, template, effect, useAttrs } from '../runtime-vapor/src'
 const ChildComponent = {
     props: {
         count: {
@@ -7,8 +7,8 @@ const ChildComponent = {
         }
     },
     setup(props, { attrs }) {
-        attrs.name = '掘金签约作者：Cobyte'
-        console.log('attrs', attrs.name)
+        // attrs.name = '掘金签约作者：Cobyte'
+        console.log('attrs', useAttrs())
         return (() => {
             const _tmpl$ = template('<div id="child"></div>')
             // 真正进行创建模板内容的地方
