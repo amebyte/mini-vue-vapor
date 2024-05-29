@@ -4,8 +4,11 @@ import ChildComponent from "./childComponent"
 const App = {
     setup() {
         const count = ref(0)
-        const info = { info: '掘金签约作者' }
-        return { count, info } 
+        // 定义订阅者函数
+        const handleUpdate = (data, data2) => {
+            console.log('emit 触发成功', data, data2)
+        }
+        return { count, handleUpdate } 
     },
     render(_ctx) {
         // 生成创建 button 标签的函数
@@ -16,8 +19,9 @@ const App = {
             _ctx.count++
         })
         const n1 = createComponent(ChildComponent, {
-            name: () => _ctx.info,
-            count: () => _ctx.count
+            count: () => _ctx.count,
+            // 添加订阅者
+            onUpdate: () => _ctx.handleUpdate
         })
         insert(n1, el)
         return el
