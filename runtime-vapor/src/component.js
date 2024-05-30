@@ -19,6 +19,13 @@ export const createComponentInstance = (
   }
   // 初始化 props
   initProps(instance, rawProps)
+  // 创建柯里化函数
+  const createEmit = (instance) => {
+    return (event, ...args) => {
+      emit(instance, event, ...args)
+    }
+  }
+  instance.emit = createEmit(instance)
   return instance
 }
 
@@ -41,7 +48,7 @@ export function createSetupContext(instance) {
     },
     get emit() {
       return (event, ...args) => {
-        emit(instance, event, ...args)
+        instance.emit(event, ...args)
       }
     }
   })
