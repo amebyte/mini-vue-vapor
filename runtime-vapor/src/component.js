@@ -19,13 +19,8 @@ export const createComponentInstance = (
   }
   // 初始化 props
   initProps(instance, rawProps)
-  // 创建柯里化函数
-  const createEmit = (instance) => {
-    return (event, ...args) => {
-      emit(instance, event, ...args)
-    }
-  }
-  instance.emit = createEmit(instance)
+  // 通过函数柯里化实现参数复用，以方便用户的使用
+  instance.emit = emit.bind(null, instance)
   return instance
 }
 
