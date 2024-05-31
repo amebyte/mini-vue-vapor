@@ -3,6 +3,42 @@ export function emit(
     event,
     ...rawArgs
   ) {
+
+    // 在开发环境中，代码会执行检查，而在生产环境中，为了性能考虑，这些检查会被省略。
+    if (__DEV__) {
+        const {
+            emitsOptions,
+            propsOptions,
+        } = instance
+        // 如果 emitsOptions 存在（即组件定义了 emits 选项），则继续检查。
+        if (emitsOptions) {
+            // 使用 in 运算符检查事件名 event 是否在 emitsOptions 中。
+            if (!(event in emitsOptions)) {
+                console.log('evvvv', event)
+                // 如果不在，并且 propsOptions 也不存在或 event 不在 propsOptions 中，则输出一个警告，说明组件发射了一个事件，但该事件既没有在 emits 选项中声明，也没有作为一个 prop 声明。
+                if (!propsOptions || !(event in propsOptions)) {
+                    console.warn(
+                        `Component emitted event "${event}" but it is neither declared in ` +
+                        `the emits option nor as an "${event}" prop.`,
+                    )
+                }
+            } else {
+                // 如果事件在 emitsOptions 中存在，那么检查是否有为该事件定义的验证器（validator）。  
+                const validator = emitsOptions[event]
+                if (typeof validator === 'function') {
+                    // 验证器是一个函数，则使用该函数来验证 `rawArgs`（可能是传递给事件的原始参数）
+                    const isValid = validator(...rawArgs)
+                    if (!isValid) {
+                        // 验证失败，则输出一个警告，说明事件参数无效，事件验证失败。
+                        console.warn(
+                        `Invalid event arguments: event validation failed for event "${event}".`,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     // 将事件名转换成 onXXX，on 后面第一个字母需要转换成大写
     const handleName = `on${event.charAt(0).toUpperCase() + event.slice(1)}`
     // 在组件实例对象上的 rawProps 判断有没有存在对应的事件，有就执行返回对应的事件函数
