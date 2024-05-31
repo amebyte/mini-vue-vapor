@@ -1,5 +1,5 @@
 import { initProps, normalizePropsOptions } from "./componentProps"
-import { emit } from './componentEmits'
+import { emit, normalizeEmitsOptions } from './componentEmits'
 const __DEV__ = true
 export const createComponentInstance = (
   component,
@@ -14,6 +14,7 @@ export const createComponentInstance = (
     setupContext: null,
     attrsProxy: null,
     propsOptions: normalizePropsOptions(component),
+    emitsOptions: normalizeEmitsOptions(component),
     isMounted: false
     // TODO: registory of provides, appContext, lifecycles, ...
   }
