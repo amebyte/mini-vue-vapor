@@ -1,3 +1,4 @@
+const __DEV__ = true
 export function emit(
     instance,
     event,
