@@ -15,7 +15,6 @@ export function emit(
         if (emitsOptions) {
             // 使用 in 运算符检查事件名 event 是否在 emitsOptions 中。
             if (!(event in emitsOptions)) {
-                console.log('evvvv', event)
                 // 如果不在，并且 propsOptions 也不存在或 event 不在 propsOptions 中，则输出一个警告，说明组件发射了一个事件，但该事件既没有在 emits 选项中声明，也没有作为一个 prop 声明。
                 if (!propsOptions || !(event in propsOptions)) {
                     console.warn(
