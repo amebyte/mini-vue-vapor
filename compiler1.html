@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Vue3 Compiler</title>
+  </head>
+  <body>
+    <script>
+
+      const NodeTypes = {
+        'ROOT': 1,
+        'ELEMENT': 2,
+        'TEXT': 3,
+        'COMMENT': 4,
+        'SIMPLE_EXPRESSION': 5,
+        'INTERPOLATION': 6,
+      }
+
+      const ConstantTypes = {
+        'NOT_CONSTANT': 0,
+        'CAN_SKIP_PATCH': 1,
+        'CAN_HOIST': 2,
+        'CAN_STRINGIFY': 3,
+      }
+
+      const locStub = {
+        start: { line: 1, column: 1, offset: 0 },
+        end: { line: 1, column: 1, offset: 0 },
+        source: '',
+      }
+
+      function createRoot(
+        children,
+        source = '',
+      ) {
+        return {
+          type: NodeTypes.ROOT,
+          source,
+          children,
+          helpers: new Set(),
+          components: [],
+          directives: [],
+          hoists: [],
+          imports: [],
+          cached: 0,
+          temps: 0,
+          codegenNode: undefined
+        }
+      }
+
+      const ParseMode = {
+        'BASE': 1,
+        'HTML': 2,
+        'SFC': 3
+      }
+      const State = {
+        'Text': 1,
+        // interpolation
+        'InterpolationOpen': 2,
+        'Interpolation': 3,
+        'InterpolationClose': 4,
+      }
+      const CharCodes = {
+        'Tab': 0x9, // "\t"
+        'NewLine': 0xa, // "\n"
+        'FormFeed': 0xc, // "\f"
+        'CarriageReturn': 0xd, // "\r"
+        'Space': 0x20, // " "
+      }
+      const defaultDelimitersOpen = new Uint8Array([123, 123]) 
+      const defaultDelimitersClose = new Uint8Array([125, 125]) // "}}"
+      
+      class Tokenizer {
+        // 当前语法分析器的状态
+        state = State.Text
+        // 缓冲区内容
+        buffer = ''
+        // 特定部分位置的情况
+        sectionStart = 0
+        // 正在查看的缓冲区内的索引
+        index = 0
+        entityStart = 0
+        baseState = State.Text
+        newlines = []
+        mode = ParseMode.BASE
+        constructor(stack, cbs) {
+          this.stack = stack
+          this.cbs = cbs
+        }
+        // reset() {
+        //   this.state = State.Text
+        //   this.mode = ParseMode.BASE
+        //   this.buffer = ''
+        //   this.sectionStart = 0
+        //   this.index = 0
+        //   this.baseState = State.Text
+        //   this.inRCDATA = false
+        //   this.currentSequence = undefined
+        //   this.newlines.length = 0
+        //   this.delimiterOpen = defaultDelimitersOpen
+        //   this.delimiterClose = defaultDelimitersClose
+        // }
+
+        stateText(c) {
+          if (c === this.delimiterOpen[0]) {
+            this.state = State.InterpolationOpen
+            this.delimiterIndex = 0
+            this.stateInterpolationOpen(c)
+          }
+        }
+
+        delimiterOpen = defaultDelimitersOpen
+        delimiterClose = defaultDelimitersClose
+        delimiterIndex = -1
+
+        stateInterpolationOpen(c) {
+          if (c === this.delimiterOpen[this.delimiterIndex]) {
+            if (this.delimiterIndex === this.delimiterOpen.length - 1) {
+              const start = this.index + 1 - this.delimiterOpen.length
+              if (start > this.sectionStart) {
+                this.cbs.ontext(this.sectionStart, start)
+              }
+              this.state = State.Interpolation
+              this.sectionStart = start
+            } else {
+              this.delimiterIndex++
+            }
+          } else {
+            this.state = State.Text
+            this.stateText(c)
+          }
+        }
+
+        stateInterpolation(c) {
+          if (c === this.delimiterClose[0]) {
+            this.state = State.InterpolationClose
+            this.delimiterIndex = 0
+            this.stateInterpolationClose(c)
+          }
+        }
+
+        stateInterpolationClose(c) {
+          if (c === this.delimiterClose[this.delimiterIndex]) {
+            if (this.delimiterIndex === this.delimiterClose.length - 1) {
+              this.cbs.oninterpolation(this.sectionStart, this.index + 1)
+              if (this.inRCDATA) {
+                this.state = State.InRCDATA
+              } else {
+                this.state = State.Text
+              }
+              this.sectionStart = this.index + 1
+            } else {
+              this.delimiterIndex++
+            }
+          } else {
+            this.state = State.Interpolation
+            this.stateInterpolation(c)
+          }
+        }
+
+        parse(input) {
+          this.buffer = input
+          while (this.index < this.buffer.length) {
+            const c = this.buffer.charCodeAt(this.index)
+            switch (this.state) {
+              case State.Text: {
+                this.stateText(c)
+                break
+              }
+              case State.InterpolationOpen: {
+                this.stateInterpolationOpen(c)
+                break
+              }
+              case State.Interpolation: {
+                this.stateInterpolation(c)
+                break
+              }
+              case State.InterpolationClose: {
+                this.stateInterpolationClose(c)
+                break
+              }
+            }
+            this.index++
+          }
+        }
+      }
+
+      let currentRoot = null
+
+      let currentInput = ''
+      const stack = []
+      let inPre = 0
+      let inVPre = false
+
+      const tokenizer = new Tokenizer(stack, {
+        ontext(start, end) {
+          onText(getSlice(start, end), start, end)
+        },
+        oninterpolation(start, end) {
+          if (inVPre) {
+            return onText(getSlice(start, end), start, end)
+          }
+          let innerStart = start + tokenizer.delimiterOpen.length
+          let innerEnd = end - tokenizer.delimiterClose.length
+          while (isWhitespace(currentInput.charCodeAt(innerStart))) {
+            innerStart++
+          }
+          while (isWhitespace(currentInput.charCodeAt(innerEnd - 1))) {
+            innerEnd--
+          }
+          let exp = getSlice(innerStart, innerEnd)
+
+          addNode({
+            type: NodeTypes.INTERPOLATION,
+            content: createExp(exp, false),
+            // loc: getLoc(start, end),
+          })
+        },
+      })
+
+      function createExp(content, isStatic = false, loc, constType = ConstantTypes.NOT_CONSTANT) {
+        const exp = createSimpleExpression(content, isStatic, loc, constType)
+        return exp
+      }
+
+      function createSimpleExpression(
+        content,
+        isStatic = false,
+        loc = locStub,
+        constType = ConstantTypes.NOT_CONSTANT,
+      ) {
+        return {
+          type: NodeTypes.SIMPLE_EXPRESSION,
+          loc,
+          content,
+          isStatic,
+          constType: isStatic ? ConstantTypes.CAN_STRINGIFY : constType,
+        }
+      }
+
+      function addNode(node) {
+        ;(stack[0] || currentRoot).children.push(node)
+      }
+
+      function getSlice(start, end) {
+        return currentInput.slice(start, end)
+      }
+
+      function onText(content, start, end) {
+        const parent = stack[0] || currentRoot
+        const lastNode = parent.children[parent.children.length - 1]
+        if (lastNode && lastNode.type === NodeTypes.TEXT) {
+          // merge
+          lastNode.content += content
+          // setLocEnd(lastNode.loc, end)
+        } else {
+          parent.children.push({
+            type: NodeTypes.TEXT,
+            content,
+            // loc: getLoc(start, end),
+          })
+        }        
+      }
+
+      const windowsNewlineRE = /\r\n/g
+      function condenseWhitespace(
+        nodes,
+        tag,
+      ) {
+        const shouldCondense = currentOptions.whitespace !== 'preserve'
+        let removedWhitespace = false
+        for (let i = 0; i < nodes.length; i++) {
+          const node = nodes[i]
+          if (node.type === NodeTypes.TEXT) {
+            if (!inPre) {
+              if (isAllWhitespace(node.content)) {
+                const prev = nodes[i - 1] && nodes[i - 1].type
+                const next = nodes[i + 1] && nodes[i + 1].type
+                // Remove if:
+                // - the whitespace is the first or last node, or:
+                // - (condense mode) the whitespace is between two comments, or:
+                // - (condense mode) the whitespace is between comment and element, or:
+                // - (condense mode) the whitespace is between two elements AND contains newline
+                if (
+                  !prev ||
+                  !next ||
+                  (shouldCondense &&
+                    ((prev === NodeTypes.COMMENT &&
+                      (next === NodeTypes.COMMENT || next === NodeTypes.ELEMENT)) ||
+                      (prev === NodeTypes.ELEMENT &&
+                        (next === NodeTypes.COMMENT ||
+                          (next === NodeTypes.ELEMENT &&
+                            hasNewlineChar(node.content))))))
+                ) {
+                  removedWhitespace = true
+                  nodes[i] = null
+                } else {
+                  // Otherwise, the whitespace is condensed into a single space
+                  node.content = ' '
+                }
+              } else if (shouldCondense) {
+                // in condense mode, consecutive whitespaces in text are condensed
+                // down to a single space.
+                node.content = condense(node.content)
+              }
+            } else {
+              // #6410 normalize windows newlines in <pre>:
+              // in SSR, browsers normalize server-rendered \r\n into a single \n
+              // in the DOM
+              node.content = node.content.replace(windowsNewlineRE, '\n')
+            }
+          }
+        }
+        if (inPre && tag && currentOptions.isPreTag(tag)) {
+          // remove leading newline per html spec
+          // https://html.spec.whatwg.org/multipage/grouping-content.html#the-pre-element
+          const first = nodes[0]
+          if (first && first.type === NodeTypes.TEXT) {
+            first.content = first.content.replace(/^\r?\n/, '')
+          }
+        }
+        return removedWhitespace ? nodes.filter(Boolean) : nodes
+      }
+
+      function isWhitespace(c) {
+        return (
+          c === CharCodes.Space ||
+          c === CharCodes.NewLine ||
+          c === CharCodes.Tab ||
+          c === CharCodes.FormFeed ||
+          c === CharCodes.CarriageReturn
+        )
+      }
+
+      function isAllWhitespace(str) {
+        for (let i = 0; i < str.length; i++) {
+          if (!isWhitespace(str.charCodeAt(i))) {
+            return false
+          }
+        }
+        return true
+      }
+
+      function hasNewlineChar(str) {
+        for (let i = 0; i < str.length; i++) {
+          const c = str.charCodeAt(i)
+          if (c === CharCodes.NewLine || c === CharCodes.CarriageReturn) {
+            return true
+          }
+        }
+        return false
+      }
+
+      function baseParse(input, options) {
+        currentInput = input
+        // currentOptions = Object.assign({}, defaultParserOptions)
+        const root = (currentRoot = createRoot([], input))
+        tokenizer.parse(currentInput)
+        // root.children = condenseWhitespace(root.children)
+        currentRoot = null
+        return root
+      }
+
+      const ast = baseParse('{{message}}')
+      console.log('ast', ast)
+    </script>
+  <body>
+</html>
