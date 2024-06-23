@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Vue3 Compiler</title>
+  </head>
+  <body>
+    <script>
+      const State = {
+        'Text': 1, // 文本状态
+        'InterpolationOpen': 2, // 插值开始状态
+        'Interpolation': 3, // 插值状态
+        'InterpolationClose': 4, // 插值结束状态
+      }
+      // 模板 AST 节点类型
+      const NodeTypes = {
+        'ROOT': 1,
+        'ELEMENT': 2,
+        'TEXT': 3,
+        'COMMENT': 4,
+        'SIMPLE_EXPRESSION': 5,
+        'INTERPOLATION': 6,
+      }
+      // 创建 AST 根节点
+      function createRoot(
+        children,
+        source = '',
+      ) {
+        return {
+          type: NodeTypes.ROOT,
+          source,
+          children
+        }
+      }
+      let currentRoot = null
+
+      class Tokenizer {
+        // 当前 Tokenizer 的状态。默认是文本状态（State.Text）。在解析过程中，状态可能会根据遇到的模板内容（如标签、注释、表达式等）而改变。
+        state = State.Text
+        // 读取缓冲区。用于存储从输入字符串中读取但尚未解析的字符。
+        buffer = ''
+        // 当前正在读取的部分的开始位置
+        sectionStart = 0
+        // 在缓冲区中当前正在查看的索引位置。
+        index = 0
+        // 插值左分隔符
+        delimiterOpen = [123, 123] // { 字符的 Unicode 编码
+        // 插值右分隔符
+        delimiterClose = [125, 125] // } 字符的 Unicode 编码
+        // 跟踪当前正在处理或最近找到的分隔符的位置
+        delimiterIndex = 0
+        constructor() {
+
+        }
+
+        parse(input) {
+          this.buffer = input
+          // 使用 while 循环遍历 buffer 中的每个字符，直到达到字符串的末尾
+          while (this.index < this.buffer.length) {
+            // 使用 charCodeAt 方法获取当前索引 index 处的字符的 Unicode 编码
+            const c = this.buffer.charCodeAt(this.index)
+            // 根据当前状态 state 使用 switch 语句进行不同的处理
+            switch (this.state) {
+              // 文本状态
+              case State.Text: {
+                if (c === this.delimiterOpen[0]) {
+                  this.state = State.InterpolationOpen
+                  this.delimiterIndex++
+                }
+                break
+              }
+              // 插值开始状态
+              case State.InterpolationOpen: {
+                if (c === this.delimiterOpen[this.delimiterIndex]) {
+                  if (this.delimiterIndex === this.delimiterOpen.length - 1) {
+                    const start = this.index + 1 - this.delimiterOpen.length
+                    this.state = State.Interpolation
+                    this.sectionStart = start
+                  } else {
+                    this.delimiterIndex++
+                  }
+                }
+                break
+              }
+              // 插值状态
+              case State.Interpolation: {
+                if (c === this.delimiterClose[0]) {
+                  this.state = State.InterpolationClose
+                  this.delimiterIndex = 1
+                }
+                break
+              }
+              // 插值结束状态
+              case State.InterpolationClose: {
+                if (c === this.delimiterClose[this.delimiterIndex]) {
+                  if (this.delimiterIndex === this.delimiterClose.length - 1) {
+                    this.oninterpolation(this.sectionStart, this.index + 1)
+                    this.state = State.Text
+                  } else {
+                    this.delimiterIndex++
+                  }
+                }
+                break
+              }
+            }
+            // 在每次循环结束时，无论状态是否改变，都将 index 增加 1，以移动到字符串中的下一个字符
+            this.index++
+          }
+        }
+
+        oninterpolation(start, end) {
+          let innerStart = start + this.delimiterOpen.length
+          let innerEnd = end - this.delimiterClose.length
+          const content = this.buffer.slice(innerStart, innerEnd)
+          const exp = this.createExp(content)
+          const node = {
+            type: NodeTypes.INTERPOLATION,
+            content: exp,
+          }
+          currentRoot.children.push(node)
+        }
+
+        createExp(content) {
+          return {
+            type: NodeTypes.SIMPLE_EXPRESSION,
+            content,
+          }
+        }
+      }
+
+      function baseParse(input){
+        currentRoot = createRoot([], input)
+        const tokenizer = new Tokenizer()
+        tokenizer.parse(input)
+        return currentRoot
+      }
+
+      console.log('ast', baseParse('{{message}}'))
+
+    </script>
+  <body>
+</html>
