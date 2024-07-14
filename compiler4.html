@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Vue3 Compiler</title>
+  </head>
+  <body>
+    <script>
+      const CharCodes = {
+        'Tab': 0x9, // "\t"
+        'NewLine': 0xa, // "\n"
+        'FormFeed': 0xc, // "\f"
+        'CarriageReturn': 0xd, // "\r"
+        'Lt': 0x3c, // "<"
+        'Gt': 0x3e, // ">"
+        'Space': 0x20, // " "
+        'Slash': 0x2f, // "/"
+        'UpperA': 0x41, // "A"
+        'LowerA': 0x61, // "a"
+        'UpperZ': 0x5a, // "Z"
+        'LowerZ': 0x7a, // "z"
+      }
+      const State = {
+        'Text': 1, // 文本状态
+        'InterpolationOpen': 2, // 插值开始状态
+        'Interpolation': 3, // 插值状态
+        'InterpolationClose': 4, // 插值结束状态
+        'BeforeTagName': 5,
+        'InTagName': 6,
+        'BeforeAttrName': 7
+      }
+      // 模板 AST 节点类型
+      const NodeTypes = {
+        'ROOT': 1,
+        'ELEMENT': 2,
+        'TEXT': 3,
+        'COMMENT': 4,
+        'SIMPLE_EXPRESSION': 5,
+        'INTERPOLATION': 6,
+      }
+
+      const ElementTypes = {
+        'ELEMENT': 1,
+        'COMPONENT': 2,
+        'SLOT': 3,
+        'TEMPLATE': 4,
+      }
+
+      // 创建 AST 根节点
+      function createRoot(
+        children,
+        source = '',
+      ) {
+        return {
+          type: NodeTypes.ROOT,
+          source,
+          children
+        }
+      }
+      // 当前的根节点
+      let currentRoot = null
+
+      class Tokenizer {
+        // 当前 Tokenizer 的状态。默认是文本状态（State.Text）。在解析过程中，状态可能会根据遇到的模板内容（如标签、注释、表达式等）而改变。
+        state = State.Text
+        // 读取缓冲区。用于存储从输入字符串中读取但尚未解析的字符。
+        buffer = ''
+        // 当前正在读取的部分的开始位置
+        sectionStart = 0
+        // 在缓冲区中当前正在查看的索引位置。
+        index = 0
+        // 插值左分隔符
+        delimiterOpen = [123, 123] // { 字符的 Unicode 编码
+        // 插值右分隔符
+        delimiterClose = [125, 125] // } 字符的 Unicode 编码
+        // 跟踪当前正在处理或最近找到的分隔符的位置
+        delimiterIndex = 0
+        constructor(cbs) {
+          // 初始化的时候注册回调钩子函数
+          this.cbs = cbs
+          console.log('cbs', this.cbs)
+        }
+        // 文本状态处理方法
+        stateText(c) {
+          // 判断是否是 < 
+          if (c === CharCodes.Lt) {
+            if (this.index > this.sectionStart) {
+                this.cbs.ontext(this.sectionStart, this.index)
+            }
+            this.state = State.BeforeTagName
+            this.sectionStart = this.index
+          } else if (c === this.delimiterOpen[0]) { // 判断是否是插值开始状态
+            // 进入插值开始状态
+            this.state = State.InterpolationOpen
+            this.delimiterIndex++
+          }
+        }
+        // 插值开始状态处理方法
+        stateInterpolationOpen(c) {
+          // 检查当前字符是否与 delimiterOpen 中对应的字符匹配
+          if (c === this.delimiterOpen[this.delimiterIndex]) {
+            // 已经匹配了 delimiterOpen 中的所有字符
+            if (this.delimiterIndex === this.delimiterOpen.length - 1) {
+              // 计算插值表达式的起始位置
+              const start = this.index + 1 - this.delimiterOpen.length
+              // 进入插值状态
+              this.state = State.Interpolation
+              // 设置插值表达式的起始位置
+              this.sectionStart = start
+            } else {
+              // 继续增加 delimiterIndex 以匹配更多的字符
+              this.delimiterIndex++
+            }
+          }
+        }
+        // 插值结束状态处理方法
+        stateInterpolationClose(c) {
+          // 检查当前字符是否与 delimiterClose 的后续字符匹配
+          if (c === this.delimiterClose[this.delimiterIndex]) {
+            // 判断是否匹配了所有的插值关闭字符
+            if (this.delimiterIndex === this.delimiterClose.length - 1) {
+              // 如果匹配并且已经匹配了 delimiterClose 的所有字符，则调用 oninterpolation 方法处理插值表达式
+              this.cbs.oninterpolation(this.sectionStart, this.index + 1)
+              // 重置状态为文本状态（Text）
+              this.state = State.Text
+            } else {
+              // 如果还没匹配完则继续增加 delimiterIndex 值，以便匹配完所有的插值关闭字符
+              this.delimiterIndex++
+            }
+          }
+        }
+        // 插值状态处理方法
+        stateInterpolation(c) {
+          // 如果当前字符是否与 delimiterClose 的第一个字符匹配
+          if (c === this.delimiterClose[0]) {
+            // 如果匹配则进入插值结束状态
+            this.state = State.InterpolationClose
+            // 重置分隔符索引为 1
+            this.delimiterIndex = 1
+          }
+        }
+
+        stateBeforeTagName(c) {
+            if (isTagStartChar(c)) {
+                this.sectionStart = this.index
+                this.state = State.InTagName
+            }
+        }
+
+        stateInTagName() {
+            if (isEndOfTagSection(c)) {
+                this.handleTagName(c)
+            }
+        }
+
+        handleTagName(c) {
+            this.cbs.onopentagname(this.sectionStart, this.index)
+            this.sectionStart = -1
+            this.state = State.BeforeAttrName
+            this.stateBeforeAttrName(c)
+        }
+
+        stateBeforeAttrName(c) {
+            if (c === CharCodes.Gt) {
+                this.cbs.onopentagend(this.index)
+                this.state = State.Text
+                this.sectionStart = this.index + 1
+            }
+        }
+
+        parse(input) {
+          this.buffer = input
+          // 使用 while 循环遍历 buffer 中的每个字符，直到达到字符串的末尾
+          while (this.index < this.buffer.length) {
+            // 使用 charCodeAt 方法获取当前索引 index 处的字符的 Unicode 编码
+            const c = this.buffer.charCodeAt(this.index)
+            // 根据当前状态 state 使用 switch 语句进行不同的处理
+            switch (this.state) {
+              // 文本状态
+              case State.Text: {
+                this.stateText(c)
+                break
+              }
+              // 插值开始状态
+              case State.InterpolationOpen: {
+                this.stateInterpolationOpen(c)
+                break
+              }
+              // 插值状态
+              case State.Interpolation: {
+                this.stateInterpolation(c)
+                break
+              }
+              // 插值结束状态
+              case State.InterpolationClose: {
+                this.stateInterpolationClose(c)
+                break
+              }
+              case State.BeforeTagName: {
+                this.stateBeforeTagName(c)
+                break
+              }
+              case State.InTagName: {
+                this.stateInTagName(c)
+                break
+              }
+            }
+            // 在每次循环结束时，无论状态是否改变，都将 index 增加 1，以移动到字符串中的下一个字符
+            this.index++
+          }
+        }
+      }
+
+      // 创建一个表示简单表达式的对象
+      function createExp(content) {
+        return {
+          type: NodeTypes.SIMPLE_EXPRESSION,
+          content,
+        }
+      }
+      
+        /**
+         * HTML only allows ASCII alpha characters (a-z and A-Z) at the beginning of a
+         * tag name.
+         */
+        function isTagStartChar(c) {
+            return (
+                (c >= CharCodes.LowerA && c <= CharCodes.LowerZ) ||
+                (c >= CharCodes.UpperA && c <= CharCodes.UpperZ)
+            )
+        }
+
+        function isWhitespace(c) {
+            return (
+                c === CharCodes.Space ||
+                c === CharCodes.NewLine ||
+                c === CharCodes.Tab ||
+                c === CharCodes.FormFeed ||
+                c === CharCodes.CarriageReturn
+            )
+        }
+
+        function isEndOfTagSection(c) {
+            return c === CharCodes.Slash || c === CharCodes.Gt || isWhitespace(c)
+        }
+
+        function addNode(node) {
+            currentRoot.children.push(node)
+        }
+
+      const tokenizer = new Tokenizer({
+        ontext(start, end) {
+            onText(getSlice(start, end), start, end)
+        },
+        oninterpolation(start, end) {
+          // 计算插值内容的起始索引，innerStart 是插值左分隔符之后的第一个字符的索引
+          let innerStart = start + tokenizer.delimiterOpen.length
+          // 计算插值内容的结束索引，innerEnd 是插值右分隔符之前的最后一个字符的索引
+          let innerEnd = end - tokenizer.delimiterClose.length
+          // 提取插值内容
+          const content = tokenizer.buffer.slice(innerStart, innerEnd)
+          // 创建表达式对象，调用 createExp 方法，将提取的内容作为参数，以创建一个表示简单表达式的对象
+          const exp = createExp(content)
+          // 创建 AST 节点：创建一个新的 AST 节点对象，其 type 属性为 NodeTypes.INTERPOLATION（表示插值），content 属性为上面创建的简单表达式对象
+          const node = {
+            type: NodeTypes.INTERPOLATION,
+            content: exp,
+          }
+          // 将新创建的插值节点添加到 currentRoot.children 数组中
+          currentRoot.children.push(node)
+        },
+        onopentagname(start, end) {
+            const name = tokenizer.buffer.slice(start, end)
+            currentOpenTag = {
+                type: NodeTypes.ELEMENT,
+                tag: name,
+                tagType: ElementTypes.ELEMENT, // will be refined on tag close
+                props: [],
+                children: []
+            }
+        },
+        onopentagend(end) {
+            addNode(currentOpenTag)
+            currentOpenTag = null
+        },
+      })
+
+      function getSlice(start, end) {
+        return currentInput.slice(start, end)
+     }
+
+      function onText(content, start, end) {
+
+      }
+
+      // 启动解析器函数
+      function baseParse(input){
+        // 创建 AST 根节点
+        currentRoot = createRoot([], input)
+        tokenizer.parse(input)
+        return currentRoot
+      }
+
+      console.log('ast', baseParse('{{message}}'))
+
+    </script>
+  <body>
+</html>
