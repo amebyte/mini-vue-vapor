@@ -1,11 +1,3 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>Vue3 Compiler</title>
-  </head>
-  <body>
-    <script>
       // 定义一些常用的字符编码，用于在解析过程中识别特定的字符
       const CharCodes = {
         'Tab': 0x9, // "\t"
@@ -412,16 +404,10 @@
       }
 
       // 启动解析器函数
-      function baseParse(input){
+      export function baseParse(input){
         currentInput = input
         // 创建 AST 根节点
         currentRoot = createRoot([], input)
         tokenizer.parse(input)
         return currentRoot
       }
-
-      console.log('ast', baseParse('<div>a,{{c}}</div>'))
-
-    </script>
-  <body>
-</html>
