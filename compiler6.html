@@ -112,6 +112,7 @@
             if (this.delimiterIndex === this.delimiterOpen.length - 1) {
               // 计算插值表达式的起始位置
               const start = this.index + 1 - this.delimiterOpen.length
+              // 处理插值前面还有文本的情况
               if (start > this.sectionStart) {
                 this.cbs.ontext(this.sectionStart, start)
               } 
@@ -420,7 +421,7 @@
         return currentRoot
       }
 
-      console.log('ast', baseParse('<div>a,{{c}}</div>'))
+      console.log('ast', baseParse('<div>掘金签约作者：{{cobyte}}</div>'))
 
     </script>
   <body>

@@ -46,6 +46,9 @@ export function createSetupContext(instance) {
       return (event, ...args) => {
         instance.emit(event, ...args)
       }
+    },
+    get expose() {
+      return () => {}
     }
   })
 }
