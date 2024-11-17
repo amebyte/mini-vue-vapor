@@ -2,7 +2,7 @@ import hash from 'hash-sum'
 import path from 'path'
 import qs from 'querystring'
 import compiler from '@vue/compiler-sfc'
-  
+console.log('cccc', compiler);  
 function parseVueRequest(id) {  
     const [filename, rawQuery] = id.split('?', 2);  
     const query = new URLSearchParams(rawQuery);  

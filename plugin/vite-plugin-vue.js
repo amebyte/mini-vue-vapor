@@ -1,5 +1,9 @@
-import compiler from '@vue/compiler-sfc'
-
+import vite from 'vite'
+import { computed, shallowRef } from '@vue/reactivity';
+import { compileScript, compileStyle, compileTemplate, parse } from '@vue/compiler-sfc';
+const compiler = {
+  compileScript, compileStyle, compileTemplate, parse
+}
 const EXPORT_HELPER_ID = "\0plugin-vue:export-helper";
 const helperCode = `
 export default (sfc, props) => {
@@ -12,9 +16,6 @@ export default (sfc, props) => {
 `;
 
 function parseVueRequest(id) {
-  filename
-  query
-} {
   const [filename, rawQuery] = id.split(`?`, 2)
   const query = Object.fromEntries(new URLSearchParams(rawQuery))
   if (query.vue != null) {
@@ -38,25 +39,21 @@ function parseVueRequest(id) {
   }
 }
 
-function isUseInlineTemplate(
-  descriptor,
-  options,
-) {
-  return (
-    !options.devServer &&
-    !options.devToolsEnabled &&
-    !!descriptor.scriptSetup &&
-    !descriptor.template?.src
-  )
+function isUseInlineTemplate(descriptor) {
+  return !!descriptor.scriptSetup
 }
 
 export default function vitePluginVue(options = {}) {
-  options = {  
+  console.log('compiler', compiler);
+  options = shallowRef({  
     ...options,  
     root: process.cwd(),  
-    include: /\.vue$/,  
-    templateCompilerOptions: {}  
-  };  
+    include: /\.vue$/,
+    compiler
+  }); 
+  const filter = computed(
+    () => vite.createFilter(options.value.include, options.value.exclude)
+  );
   return {
     name: 'vite-plugin-vue', // 此名称将出现在警告和错误中
     async resolveId(id) {
@@ -85,22 +82,15 @@ export default function vitePluginVue(options = {}) {
       if (!query.vue) {
           return transformMain(
               code,
-              id,
-              options.value,
-              this,
-              ssr,
-              customElementFilter.value(id)
+              id
           ); 
       } else {
-        const descriptor = getDescriptor(filename, options.value)
+        const descriptor = getDescriptor(filename)
         if (query.type === 'style') {
           return transformStyle(
             code,
             descriptor,
-            Number(query.index || 0),
-            options.value,
-            this,
-            filename,
+            Number(query.index || 0)
           )
         }
       }
@@ -108,36 +98,22 @@ export default function vitePluginVue(options = {}) {
   };  
 }
 
-async function transformMain(code, filename, options, pluginContext, ssr, customElement) {
-    const { devServer, isProduction, devToolsEnabled } = options;
-    const { descriptor, errors } = createDescriptor(filename, code, options);
+async function transformMain(code, filename) {
+    const { descriptor, errors } = createDescriptor(filename, code);
     if (errors.length) {
         return null;
     }
     const attachedProps = [];
-    const hasScoped = descriptor.styles.some((s) => s.scoped);
-    const { code: scriptCode, map: scriptMap } = await genScriptCode(
-      descriptor,
-      options,
-      pluginContext,
-      ssr,
-      customElement
-    );
+    const { code: scriptCode, map: scriptMap } = await genScriptCode(descriptor);
 
-    const { code: templateCode, map: templateMap } = await genTemplateCode(
-      descriptor,
-      options,
-      pluginContext,
-      ssr,
-      customElement
-    )
+    const { code: templateCode, map: templateMap } = await genTemplateCode(descriptor)
 
     attachedProps.push(["render", "_sfc_render"]);
 
     const output = [
       scriptCode,
       templateCode,
-      stylesCode,
+      // stylesCode,
     ]
 
     output.push(
@@ -158,20 +134,18 @@ async function transformMain(code, filename, options, pluginContext, ssr, custom
     }
 }
 
-function createDescriptor(filename, source, { root, isProduction, sourceMap, compiler, template }, hmr = false) {
+function createDescriptor(filename, source) {
+  console.log('compiler', compiler);
     const { descriptor, errors } = compiler.parse(source, {
-        filename,
-        sourceMap,
-        templateParseOptions: template?.compilerOptions
+        filename
     });
     return { descriptor, errors };
 }
 
-async function genScriptCode(descriptor, options, pluginContext, ssr, customElement) {
-    let scriptCode = `const ${scriptIdentifier} = {}`;
+async function genScriptCode(descriptor) {
     let map;
-    const script = resolveScript(descriptor, options, ssr, customElement);
-    scriptCode = script.content
+    const script = resolveScript(descriptor);
+    const scriptCode = script.content
     map = script.map
     return {
       code: scriptCode,
@@ -180,40 +154,30 @@ async function genScriptCode(descriptor, options, pluginContext, ssr, customElem
 }
 
 
-function resolveScript(descriptor, options, ssr, customElement) {
+function resolveScript(descriptor) {
   if (!descriptor.script && !descriptor.scriptSetup) {
     return null;
   }
   let resolved = null;
-  resolved = options.compiler.compileScript(descriptor, {
-    ...options.script,
+  resolved = compiler.compileScript(descriptor, {
     id: descriptor.id,
-    isProd: options.isProduction,
-    inlineTemplate: isUseInlineTemplate(descriptor, options)
+    // inlineTemplate: isUseInlineTemplate(descriptor)
   });
   return resolved;
 }
 
-function genTemplateCode(descriptor, options, pluginContext, ssr, customElement) {
+function genTemplateCode(descriptor) {
   const template = descriptor.template;
   return transformTemplateInMain(
     template.content,
-    descriptor,
-    options,
-    pluginContext,
-    ssr,
-    customElement
+    descriptor
   );
 }
 
-function transformTemplateInMain(code, descriptor, options, pluginContext, ssr, customElement) {
+function transformTemplateInMain(code, descriptor) {
   const result = compile(
     code,
-    descriptor,
-    options,
-    pluginContext,
-    ssr,
-    customElement
+    descriptor
   );
   return {
     ...result,
@@ -224,9 +188,9 @@ function transformTemplateInMain(code, descriptor, options, pluginContext, ssr, 
   };
 }
 
-function compile(code, descriptor, options, pluginContext, ssr, customElement) {
-  resolveScript(descriptor, options, ssr, customElement);
-  const result = options.compiler.compileTemplate({
+function compile(code, descriptor) {
+  resolveScript(descriptor);
+  const result = compiler.compileTemplate({
     id: descriptor.id,
     filename: descriptor.filename,
     source: code
