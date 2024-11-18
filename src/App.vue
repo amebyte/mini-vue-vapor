@@ -2,3 +2,8 @@
 <script setup>
 console.log('')
 </script>
+<style>
+div {
+    color: red;
+}
+</style>
