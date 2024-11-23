@@ -1,6 +1,6 @@
-export default function vitePluginTest() {  
+export default function rollupPluginTest() {  
   return {
-    name: 'vite-plugin-test', // 此名称将出现在警告和错误中
+    name: 'rollup-plugin-test', // 此名称将出现在警告和错误中
     resolveId(id) {
       // 如果导入路径是 'virtual-module'，则解析为 'cobyte-module'  
       if (id === 'virtual-module') { 
