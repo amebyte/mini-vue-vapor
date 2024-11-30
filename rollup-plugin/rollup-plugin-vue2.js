@@ -2,12 +2,6 @@ import hash from 'hash-sum'
 import path from 'path'
 import qs from 'querystring'
 import compiler from '@vue/compiler-sfc'
-console.log('cccc', compiler);  
-function parseVueRequest(id) {  
-    const [filename, rawQuery] = id.split('?', 2);  
-    const query = new URLSearchParams(rawQuery);  
-    return { filename, query };  
-}
 
 export function parseVuePartRequest(id) {
   const [filename, query] = id.split('?', 2)
@@ -44,7 +38,7 @@ function getDescriptor(filename, source, options) {
   if (cache.has(filename)) {  
     return cache.get(filename);  
   }  
-//   const source = fs.readFileSync(filename, 'utf-8');  
+
   return createDescriptor(filename, source, options);  
 }
 const cacheToUse = new WeakMap()
@@ -65,7 +59,7 @@ function genScriptCode(descriptor) {
     const query = `?vue&type=script`
     const scriptRequest = JSON.stringify(descriptor.filename + query)
     scriptImport =
-      `import script from ${scriptRequest}\n` + `export * from ${scriptRequest}` // support named exports
+      `import script from ${scriptRequest}\n` + `export * from ${scriptRequest}`
   }
   return scriptImport;
 }
@@ -91,40 +85,10 @@ function genStyleCode(descriptor, scopeId) {
 function transformMain(code, filename, options) {  
   const descriptor = getDescriptor(filename, code, options);  
   const scopeId = hash(filename + code);  
-  // const script = descriptor.script || descriptor.scriptSetup;  
-  // let scriptCode = `const script = {};`;  
-  // if (script) {  
-  //   if (script.src) {  
-  //     throw new Error('Script src not supported in simplified version.');  
-  //   }  
-  //   const resolved = compiler.compileScript(descriptor, { id: descriptor.id, inlineTemplate: true, });
-  //   scriptCode = resolved.content;  
-  // }  
-  const scriptImport = genScriptCode(descriptor);
-  
-  // const template = descriptor.template;  
-  // let templateCode = `const render = () => {};`;  
-  // if (template) {  
-  //   if (template.src) {  
-  //     throw new Error('Template src not supported in simplified version.');  
-  //   }  
-  //   const result = compiler.compileTemplate({  
-  //     ...options.templateCompilerOptions,  
-  //     source: template.content,  
-  //     filename  
-  //   });  
-  //   templateCode = result.code;  
-  // }
 
+  const scriptImport = genScriptCode(descriptor);
   const stylesCode = genStyleCode(descriptor, scopeId) 
 
-  // if (descriptor.styles && descriptor.styles.length) {  
-  //   stylesCode = descriptor.styles.map((style, index) => {  
-  //     return `import style${index} from '${filename}?vue&type=style&index=${index}';`;  
-  //   }).join('\n');  
-  //   stylesCode += '\nconst styles = [' + descriptor.styles.map((_, index) => `style${index}`).join(',') + '];';  
-  // }  
-  console.log('stylesCode', stylesCode);
   return {  
     code: `  
       ${scriptImport}
@@ -165,7 +129,6 @@ export default function vuePlugin(options = {}) {
       return null
     },
     load(id) {
-      console.log('load', id);
       const query = parseVuePartRequest(id); 
       if (query.vue) {
         const descriptor = getDescriptor(query.filename)
@@ -187,10 +150,7 @@ export default function vuePlugin(options = {}) {
       return null
     },
     transform(code, id) {  
-        console.log('idd', id);
-        // const { filename, query } = parseVueRequest(id);  
         const query = parseVuePartRequest(id)
-        console.log('query', query);
         if (!query.vue && options.include.test(id)) {  
           return transformMain(code, query.filename, options);  
         } else if (query.type === "style") {   
