@@ -116,7 +116,6 @@ export default function vuePlugin(options = {}) {
     ...options,  
     root: process.cwd(),  
     include: /\.vue$/,  
-    templateCompilerOptions: {}  
   };  
   
   return {  

@@ -1,22 +1,21 @@
 // import VuePlugin from 'rollup-plugin-vue'
 // import PostCSS from 'rollup-plugin-postcss'
-import NodeResolve from '@rollup/plugin-node-resolve'
-import VuePlugin from './rollup-plugin-vue2.js'
-import PostCSS from './rollup-plugin-postcss.js'
+// import NodeResolve from '@rollup/plugin-node-resolve'
+// import VuePlugin from './rollup-plugin-vue2.js'
+// import PostCSS from './rollup-plugin-postcss.js'
 
 export default [
   {
-    input: '../src/App.vue',
+    input: './index.js',
     output: {
-      file: 'dist/App.js',
+      file: 'dist/output.js',
       format: 'esm',
-      sourcemap: 'inline',
     },
-    plugins: [
-     NodeResolve(),
-     VuePlugin(),
-     PostCSS(),
-    ],
-    external: ['vue'],
+    // plugins: [
+    //  NodeResolve(),
+    //  VuePlugin(),
+    //  PostCSS(),
+    // ],
+    // external: ['vue'],
   },
 ]
