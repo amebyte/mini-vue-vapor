@@ -3,7 +3,7 @@ import path from 'path'
 import qs from 'querystring'
 import compiler from '@vue/compiler-sfc'
 
-export function parseVuePartRequest(id) {
+function parseVuePartRequest(id) {
   const [filename, query] = id.split('?', 2)
 
   if (!query) return { vue: false, filename }
@@ -14,10 +14,7 @@ export function parseVuePartRequest(id) {
     return {
       ...raw,
       filename,
-      vue: true,
-      index: Number(raw.index),
-      src: 'src' in raw,
-      scoped: 'scoped' in raw,
+      vue: true
     }
   }
 
