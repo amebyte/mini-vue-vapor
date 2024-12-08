@@ -26,6 +26,7 @@ export default function pluginVue() {
     return {
         name: 'rollup-plugin-vue',
         async resolveId(id) {
+          console.log('resolveId', id);
             // 调用 parseVuePartRequest 函数解析模块 ID
             const query = parseVuePartRequest(id);
             // 解析结果如果 query.vue 为 true 表示这是一个 Vue 组件请求，则返回原始的模块 ID，这样该插件后续就会继续处理这个模块
@@ -36,6 +37,7 @@ export default function pluginVue() {
             return null
         },
         load(id) {
+          console.log('load', id);
             // 调用 parseVuePartRequest 函数解析模块 ID
             const query = parseVuePartRequest(id);
             // 解析结果如果 query.vue 为 true 表示这是一个 Vue 组件请求，则返回原始的模块 ID，这样该插件后续就会继续处理这个模块
@@ -56,6 +58,7 @@ export default function pluginVue() {
             }
         },
         transform(code, id) {  
+          console.log('transform', id);
           if (/\.vue$/.test(id)) {
               const result = compiler.parse(code);
               // 创建组件的唯一标识符，用于样式作用域等

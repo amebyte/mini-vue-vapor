@@ -13,8 +13,9 @@ export default [
       format: 'esm',
     },
     plugins: [
+      VuePlugin(),
       pluginVue(),
-      VuePlugin()
+      
     ],
     // external: ['vue'],
   },
