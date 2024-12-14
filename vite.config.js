@@ -1,18 +1,19 @@
 import { defineConfig } from 'vite'
-import Vue from '@vitejs/plugin-vue'
+// import Vue from '@vitejs/plugin-vue'
 import * as CompilerVapor from './compiler-vapor/src/index2'
 // import vitePluginTest from './plugin/rollup-plugin-test'
 // import vitePlugin from './plugin/vite-plugin-vue'
 // import vitePlugin from './plugin/rollup-plugin-virtual-vue'
-import vitePlugin from './vite-plugin/vite-plugin-test'
+// import vitePlugin from './vite-plugin/vite-plugin-test'
+import vitePluginVirtualVue from './vite-plugin/vite-plugin-virtual-vue'
 
 export default defineConfig({
   plugins: [
-    Vue({
-      template: {
-        compiler: CompilerVapor
-      }
-    }),
-    vitePlugin()
+    // Vue({
+    //   template: {
+    //     compiler: CompilerVapor
+    //   }
+    // }),
+    vitePluginVirtualVue()
   ]
 })
