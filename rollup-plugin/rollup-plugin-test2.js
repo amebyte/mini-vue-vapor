@@ -1,4 +1,4 @@
-export default function rollupPluginTest() {  
+export default function rollupPluginTest2() {  
     return {
       name: 'rollup-plugin-test2',
       resolveId(id) {
